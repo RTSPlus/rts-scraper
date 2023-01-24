@@ -1,24 +1,28 @@
-from schedule import every, repeat, run_pending
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import time
 
+import asyncio
 import sys, os
 
-@repeat(every(1).seconds)
-def job():
-    print("yhuhhhh")
+async def job():
+    # print(await async_api_call(session, call_type=API_Call.GET_ROUTES)
+    # async_call()
+    await asyncio.sleep(0.3)
+    print("yuh")
 
-@repeat(every(2).seconds)
-def job2():
-    print("yuh2")
-
+### Scheduling Loop ###
 def main():
-    while True:
-        run_pending()
-        time.sleep(1)
-        print("end")
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(job, 'interval', seconds=1)
     
-def shutdown():
-    print("shutting down")
+    print("start")
+    scheduler.start()
+
+    return scheduler
+    
+def shutdown(scheduler):
+    scheduler.shutdown()
+
     try:
         sys.exit(0)
     except SystemExit as e:
@@ -26,10 +30,11 @@ def shutdown():
 
 if __name__ == "__main__":
     try:
-        main()
+        scheduler = main()
+        asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         # Gracefully shut down on Cltr+C interrupt
-        shutdown()
+        shutdown(scheduler)
     except Exception:
         # Cleanup and reraise. This will print a backtrace.
         raise        
