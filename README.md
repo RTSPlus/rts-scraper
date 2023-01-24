@@ -46,6 +46,6 @@ The script requires a .env file for api secrets. Contact the project owner for t
 
 # Code details:
 
-Scraping scheduling handled with the `schedule` library:
+Scraping scheduling handled with the `apscheduler` library:
 
-https://schedule.readthedocs.io/en/stable/index.html
+https://apscheduler.readthedocs.io/en/3.x/
