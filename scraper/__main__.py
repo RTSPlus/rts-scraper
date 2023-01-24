@@ -1,23 +1,24 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import time
-
-import asyncio
 import sys, os
+import asyncio
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from dotenv import load_dotenv
+import rts_api as rts
+import aiohttp
 
 async def job():
-    # print(await async_api_call(session, call_type=API_Call.GET_ROUTES)
-    # async_call()
-    await asyncio.sleep(0.3)
-    print("yuh")
+    async with aiohttp.ClientSession() as session:
+        print(await rts.async_api_call(session, call_type=rts.API_Call.GET_ROUTES, hash_key=os.getenv('RTS_HASH_KEY'), api_key=os.getenv('RTS_API_KEY')))
 
 ### Scheduling Loop ###
 def main():
+    # Load .env file
+    load_dotenv()
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(job, 'interval', seconds=1)
     
-    print("start")
     scheduler.start()
-
     return scheduler
     
 def shutdown(scheduler):

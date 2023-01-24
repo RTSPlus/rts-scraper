@@ -431,14 +431,16 @@ category = "main"
 optional = false
 python-versions = "^3.11"
 files = []
-develop = true
+develop = false
 
 [package.dependencies]
 aiohttp = "^3.8.3"
 
 [package.source]
-type = "directory"
-url = "../rts-api-python"
+type = "git"
+url = "https://github.com/RTSPlus/rts-api-python"
+reference = "HEAD"
+resolved_reference = "46fcef23a3d55f49b6c61c023434de71b7131d1b"
 
 [[package]]
 name = "setuptools"
@@ -592,4 +594,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "35d864241d080a038e0f5d04d5891c651d9480a1b5f90b447350b4f4e7577962"
+content-hash = "a05050675797144de54fa9b49bb5833b5093e5ab3b07db08d9a0653da738c3d6"
