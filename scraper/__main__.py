@@ -69,29 +69,24 @@ async def job_get_vehicles(
     )["bustime-response"]["routes"]
     routes = [(route["rt"], route["rtnm"]) for route in res_routes]
 
+    # Update xtime for next call
+    xtime = round(time() * 1000)
+
     # Then we request the vehicles for each route
     # Each GET_VEHICLES request can only serve 10 requests at a time, thus must be split up
-    vehicle_futures = []
-    chunked = list(chunk(routes, 10))
-
-    for c in chunked:
-        # Update xtime for next call
-        xtime = round(time() * 1000)
-
-        vehicle_futures.append(
-            asyncio.ensure_future(
-                rts.async_api_call(
-                    session,
-                    call_type=rts.API_Call.GET_VEHICLES,
-                    params={"rt": ",".join([route[0] for route in c])},
-                    hash_key=os.getenv("RTS_HASH_KEY"),
-                    api_key=os.getenv("RTS_API_KEY"),
-                    xtime=xtime,
-                )
+    vehicle_responses = await asyncio.gather(
+        *(
+            rts.async_api_call(
+                session,
+                call_type=rts.API_Call.GET_VEHICLES,
+                params={"rt": ",".join([route[0] for route in c])},
+                hash_key=os.getenv("RTS_HASH_KEY"),
+                api_key=os.getenv("RTS_API_KEY"),
+                xtime=xtime,
             )
+            for c in chunk(routes, 10)
         )
-
-    vehicle_responses = await asyncio.gather(*vehicle_futures)
+    )
     results = [
         response["bustime-response"]["vehicle"] for response in vehicle_responses
     ]
@@ -108,7 +103,39 @@ async def job_get_vehicles(
 async def job_get_patterns(
     session: aiohttp.ClientSession, con: sqlite3.Connection, req: RequestDataType
 ):
-    print("yuh4")
+    # First get current routes that are being serviced
+    xtime = round(time() * 1000)
+    res_routes = (
+        await rts.async_api_call(
+            session,
+            call_type=rts.API_Call.GET_ROUTES,
+            hash_key=os.getenv("RTS_HASH_KEY"),
+            api_key=os.getenv("RTS_API_KEY"),
+            xtime=xtime,
+        )
+    )["bustime-response"]["routes"]
+    routes = [(route["rt"], route["rtnm"]) for route in res_routes]
+
+    patterns_responses = await asyncio.gather(
+        *(
+            rts.async_api_call(
+                session,
+                call_type=rts.API_Call.GET_ROUTE_PATTERNS,
+                params={"rt": rt[0]},
+                hash_key=os.getenv("RTS_HASH_KEY"),
+                api_key=os.getenv("RTS_API_KEY"),
+                xtime=xtime,
+            )
+            for rt in routes
+        )
+    )
+
+    cur = con.cursor()
+    cur.execute(
+        f"insert into {req.db_table_name} values(?, ?)",
+        (xtime, json.dumps(patterns_responses)),
+    )
+    con.commit()
 
 
 ### Request Data Definition ###
