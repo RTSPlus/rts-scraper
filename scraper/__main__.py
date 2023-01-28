@@ -1,4 +1,5 @@
 from time import time
+from datetime import datetime
 import sys, os
 import asyncio
 import sqlite3
@@ -11,7 +12,35 @@ from dotenv import load_dotenv
 import rts_api as rts
 import aiohttp
 
+
 db_name = "bus_data.db"
+
+# Redirecting log to both stdout and log file
+log_filename = "scraper.log"
+log_file = open(log_filename, "a")
+
+
+class Logger:
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+        log_file.write(data)
+        log_file.flush()
+
+    def close(self):
+        self.stream.close()
+        log_file.close()
+
+    def flush(self):
+        self.stream.flush()
+        log_file.flush()
+
+
+sys.stdout = Logger(sys.stdout)
 
 
 class RequestDataType(NamedTuple):
@@ -54,9 +83,9 @@ async def job_get_routes(
         )
         con.commit()
 
-        print(f"[{req.job.__name__}][{xtime}] Request successful")
+        print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
     except sqlite3.Error as e:
-        print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
+        print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
 
 
 async def job_get_vehicles(
@@ -108,11 +137,11 @@ async def job_get_vehicles(
             )
             con.commit()
 
-            print(f"[{req.job.__name__}][{xtime}] Request successful")
+            print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
         except sqlite3.Error as e:
-            print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
+            print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
     else:
-        print(f"[{req.job.__name__}] No results returned")
+        print(f"[{req.job.__name__}][{datetime.now()}] No results returned")
 
 
 async def job_get_patterns(
@@ -153,9 +182,9 @@ async def job_get_patterns(
         )
         con.commit()
 
-        print(f"[{req.job.__name__}][{xtime}] Request successful")
+        print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
     except sqlite3.Error as e:
-        print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
+        print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
 
 
 ### Request Data Definition ###
@@ -204,6 +233,8 @@ async def main(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
 def shutdown(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
     scheduler.shutdown()
     con.close()
+
+    sys.stdout.close()
 
     try:
         sys.exit(0)
