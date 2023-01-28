@@ -49,3 +49,44 @@ The script requires a .env file for api secrets. Contact the project owner for t
 Scraping scheduling handled with the `apscheduler` library:
 
 https://apscheduler.readthedocs.io/en/3.x/
+
+# Supervisord
+
+- Process managed using Supervisor
+  - http://supervisord.org/introduction.html
+- Handles auto-starting the process, restarting if it crashes, and redirecting stdout/stderr to a log file.
+- Config file is located in `/etc/supervisord.conf`
+- Monitor processes using the `supervisorctl` command (will need sudo)
+
+## Monitoring live logs
+
+- In the `/home/ec2-user/rts-scraper/` directory, run `tail -f [file].log`
+
+  - There are 3 log files
+
+    - `scraper.log`
+    - `scraper_stdout.log`
+    - `scraper_stderr.log`
+
+  - `scraper.log` and `scraper_stdout.log` should be redundant
+  - `scraper_stderr.log` will dump errors.
+
+## Editing config
+
+- Edit the config file in `/etc/supervisord.conf`
+- Run `supervisorctl reread`
+- Run `supervisorctl update`
+
+## Config for scraper
+
+```
+[program:scraper]
+directory=/home/ec2-user/rts-scraper
+command=/home/ec2-user/rts-scraper/.venv/bin/python scraper
+user=ec2-user
+redirect_stderr=True
+stdout_logfile=/home/ec2-user/rts-scraper/scraper_stdout.log
+stderr_logfile=/home/ec2-user/rts-scraper/scraper_stderr.log
+autorestart=true
+autostart=true
+```
