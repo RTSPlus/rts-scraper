@@ -5,6 +5,7 @@ import sqlite3
 import json
 from types import CoroutineType
 from typing import NamedTuple
+from functools import wraps
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ db_name = "bus_data.db"
 
 class RequestDataType(NamedTuple):
     """
-    `interval_val` comes from https://apscheduler.readthedocs.io/en/3.x/modules/triggers/cron.html
+    `interval_val` comes from https://apscheduler.readthedocs.io/en/3.x/modules/triggers/interval.html?highlight=hours
     """
 
     db_table_name: str
@@ -46,11 +47,17 @@ async def job_get_routes(
         api_key=os.getenv("RTS_API_KEY"),
     )
 
-    cur = con.cursor()
-    cur.execute(
-        f"insert into {req.db_table_name} values(?, ?)", (xtime, json.dumps(results))
-    )
-    con.commit()
+    try:
+        cur = con.cursor()
+        cur.execute(
+            f"insert into {req.db_table_name} values(?, ?)",
+            (xtime, json.dumps(results)),
+        )
+        con.commit()
+
+        print(f"[{req.job.__name__}][{xtime}] Request successful")
+    except sqlite3.Error as e:
+        print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
 
 
 async def job_get_vehicles(
@@ -92,12 +99,19 @@ async def job_get_vehicles(
     ]
 
     if len(results):
-        cur = con.cursor()
-        cur.execute(
-            f"insert into {req.db_table_name} values(?, ?)",
-            (xtime, json.dumps(results)),
-        )
-        con.commit()
+        try:
+            cur = con.cursor()
+            cur.execute(
+                f"insert into {req.db_table_name} values(?, ?)",
+                (xtime, json.dumps(results)),
+            )
+            con.commit()
+
+            print(f"[{req.job.__name__}][{xtime}] Request successful")
+        except sqlite3.Error as e:
+            print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
+    else:
+        print(f"[{req.job.__name__}] No results returned")
 
 
 async def job_get_patterns(
@@ -130,12 +144,17 @@ async def job_get_patterns(
         )
     )
 
-    cur = con.cursor()
-    cur.execute(
-        f"insert into {req.db_table_name} values(?, ?)",
-        (xtime, json.dumps(patterns_responses)),
-    )
-    con.commit()
+    try:
+        cur = con.cursor()
+        cur.execute(
+            f"insert into {req.db_table_name} values(?, ?)",
+            (xtime, json.dumps(patterns_responses)),
+        )
+        con.commit()
+
+        print(f"[{req.job.__name__}][{xtime}] Request successful")
+    except sqlite3.Error as e:
+        print(f"[{req.job.__name__}] Error occurred: {e.args[0]}")
 
 
 ### Request Data Definition ###
@@ -143,17 +162,17 @@ request_data = RequestData(
     get_routes=RequestDataType(
         db_table_name="request_get_routes",
         job=job_get_routes,
-        interval_val={"seconds": 2},
+        interval_val={"hours": 12},
     ),
     get_patterns=RequestDataType(
         db_table_name="request_get_patterns",
         job=job_get_patterns,
-        interval_val={"seconds": 1},
+        interval_val={"hours": 12},
     ),
     get_vehicles=RequestDataType(
         db_table_name="request_get_vehicles",
         job=job_get_vehicles,
-        interval_val={"seconds": 1},
+        interval_val={"seconds": 5},
     ),
 )
 
