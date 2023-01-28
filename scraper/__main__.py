@@ -93,9 +93,11 @@ async def job_get_vehicles(
             for c in chunk(routes, 10)
         )
     )
-    results = [
-        response["bustime-response"]["vehicle"] for response in vehicle_responses
-    ]
+
+    results = []
+    for response in vehicle_responses:
+        if "vehicle" in response["bustime-response"]:
+            results.extend(response["bustime-response"]["vehicle"])
 
     if len(results):
         try:
