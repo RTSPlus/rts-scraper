@@ -5,7 +5,6 @@ import sqlite3
 import json
 from types import CoroutineType
 from typing import NamedTuple
-from functools import wraps
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
