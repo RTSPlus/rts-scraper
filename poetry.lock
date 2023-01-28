@@ -541,7 +541,7 @@ aiohttp = "^3.8.3"
 type = "git"
 url = "https://github.com/RTSPlus/rts-api-python"
 reference = "HEAD"
-resolved_reference = "46fcef23a3d55f49b6c61c023434de71b7131d1b"
+resolved_reference = "17499d2664c5dbd1d172db88853959557bcc1dd9"
 
 [[package]]
 name = "setuptools"
