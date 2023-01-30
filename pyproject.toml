@@ -10,6 +10,7 @@ python = "^3.11"
 python-dotenv = "^0.21.1"
 apscheduler = "^3.9.1.post1"
 rts-api = {git = "https://github.com/RTSPlus/rts-api-python"}
+boto3 = "^1.26.59"
 
 
 [tool.poetry.group.dev.dependencies]
