@@ -15,33 +15,6 @@ import aiohttp
 
 db_name = "bus_data.db"
 
-# Redirecting log to both stdout and log file
-log_filename = "scraper.log"
-log_file = open(log_filename, "a")
-
-
-class Logger:
-    def __init__(self, stream):
-        self.stream = stream
-
-    def write(self, data):
-        self.stream.write(data)
-        self.stream.flush()
-
-        log_file.write(data)
-        log_file.flush()
-
-    def close(self):
-        self.stream.close()
-        log_file.close()
-
-    def flush(self):
-        self.stream.flush()
-        log_file.flush()
-
-
-sys.stdout = Logger(sys.stdout)
-
 
 class RequestDataType(NamedTuple):
     """
@@ -233,8 +206,6 @@ async def main(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
 def shutdown(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
     scheduler.shutdown()
     con.close()
-
-    sys.stdout.close()
 
     try:
         sys.exit(0)
