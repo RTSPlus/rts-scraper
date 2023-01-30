@@ -58,18 +58,20 @@ https://apscheduler.readthedocs.io/en/3.x/
 - Config file is located in `/etc/supervisord.conf`
 - Monitor processes using the `supervisorctl` command (will need sudo)
 
+## Using supervisord
+
+- Start service if not running already
+  - `sudo service supervisord start`
+- Monitor processes using the `supervisorctl` command (will need sudo)
+  - Launches you into its own shell
+  - `start [program]` to start a program
+  - `stop [program]` to stop a program
+
 ## Monitoring live logs
 
 - In the `/home/ec2-user/rts-scraper/` directory, run `tail -f [file].log`
-
-  - There are 3 log files
-
-    - `scraper.log`
-    - `scraper_stdout.log`
-    - `scraper_stderr.log`
-
-  - `scraper.log` and `scraper_stdout.log` should be redundant
-  - `scraper_stderr.log` will dump errors.
+  - `scraper_stdout.log`
+  - `scraper_stderr.log`
 
 ## Editing config
 
@@ -90,3 +92,8 @@ stderr_logfile=/home/ec2-user/rts-scraper/scraper_stderr.log
 autorestart=true
 autostart=true
 ```
+
+## Notes:
+
+- `export PATH="/usr/local/bin:$PATH"`
+- `export PATH="/root/.local/bin:$PATH"`
