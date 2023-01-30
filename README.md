@@ -93,7 +93,8 @@ autorestart=true
 autostart=true
 ```
 
-## Notes:
+## Session Manager:
 
-- `export PATH="/usr/local/bin:$PATH"`
-- `export PATH="/root/.local/bin:$PATH"`
+- Add these to the PATH because they're not there for some reason
+  - `export PATH="/usr/local/bin:$PATH"`
+  - `export PATH="/root/.local/bin:$PATH"`
