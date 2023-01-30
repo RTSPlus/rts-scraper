@@ -13,15 +13,18 @@ import rts_api as rts
 import aiohttp
 
 import boto3
+from botocore.config import Config
 
 ENABLE_CLOUDWATCH_LOGS = False
 
 db_name = "bus_data.db"
 cloudwatch_log_group = "scraper-monitoring"
 
+cloudwatch_client_config = Config(region_name="us-east-2")
+
 cloudwatch_logs = None
 if ENABLE_CLOUDWATCH_LOGS:
-    cloudwatch_logs = boto3.client("logs")
+    cloudwatch_logs = boto3.client("logs", config=cloudwatch_client_config)
 
 
 def log(tag: str, msg: str, timestamp: int = None, log_stream: str | None = None):
