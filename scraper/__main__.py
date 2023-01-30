@@ -12,8 +12,40 @@ from dotenv import load_dotenv
 import rts_api as rts
 import aiohttp
 
+import boto3
+
+ENABLE_CLOUDWATCH_LOGS = False
 
 db_name = "bus_data.db"
+cloudwatch_log_group = "scraper-monitoring"
+
+cloudwatch_logs = None
+if ENABLE_CLOUDWATCH_LOGS:
+    cloudwatch_logs = boto3.client("logs")
+
+
+def log(tag: str, msg: str, timestamp: int = None, log_stream: str | None = None):
+    """
+    Logs to both stdout and CloudWatch Logs.
+    Requires a log_stream to be passed in if CloudWatch Logs is to be used.
+    """
+    timestamp = timestamp if timestamp else int(round(time() * 1000))
+    message = f"[{tag}][{datetime.fromtimestamp(timestamp/1000)}] {msg}"
+
+    sys.stdout.write(message + "\n")
+    sys.stdout.flush()
+
+    if log_stream and cloudwatch_logs:
+        cloudwatch_logs.put_log_events(
+            logGroupName=cloudwatch_log_group,
+            logStreamName=log_stream,
+            logEvents=[
+                {
+                    "timestamp": timestamp,
+                    "message": message,
+                }
+            ],
+        )
 
 
 class RequestDataType(NamedTuple):
@@ -24,6 +56,7 @@ class RequestDataType(NamedTuple):
     db_table_name: str
     job: CoroutineType
     interval_val: dict[str, int]
+    cloudwatch_log_stream: str
 
 
 class RequestData(NamedTuple):
@@ -56,9 +89,15 @@ async def job_get_routes(
         )
         con.commit()
 
-        print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
+        log(
+            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+        )
     except sqlite3.Error as e:
-        print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
+        log(
+            req.job.__name__,
+            f"Error occurred: {e.args[0]}",
+            log_stream=req.cloudwatch_log_stream,
+        )
 
 
 async def job_get_vehicles(
@@ -110,11 +149,21 @@ async def job_get_vehicles(
             )
             con.commit()
 
-            print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
+            log(
+                req.job.__name__,
+                "Request successful",
+                log_stream=req.cloudwatch_log_stream,
+            )
         except sqlite3.Error as e:
-            print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
+            log(
+                req.job.__name__,
+                f"Error occurred: {e.args[0]}",
+                log_stream=req.cloudwatch_log_stream,
+            )
     else:
-        print(f"[{req.job.__name__}][{datetime.now()}] No results returned")
+        log(
+            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+        )
 
 
 async def job_get_patterns(
@@ -155,9 +204,15 @@ async def job_get_patterns(
         )
         con.commit()
 
-        print(f"[{req.job.__name__}][{datetime.now()}] Request successful")
+        log(
+            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+        )
     except sqlite3.Error as e:
-        print(f"[{req.job.__name__}][{datetime.now()}] Error occurred: {e.args[0]}")
+        log(
+            req.job.__name__,
+            f"Error occured: {e.args[0]}",
+            log_stream=req.cloudwatch_log_stream,
+        )
 
 
 ### Request Data Definition ###
@@ -166,16 +221,19 @@ request_data = RequestData(
         db_table_name="request_get_routes",
         job=job_get_routes,
         interval_val={"hours": 12},
+        cloudwatch_log_stream="job-get-routes",
     ),
     get_patterns=RequestDataType(
         db_table_name="request_get_patterns",
         job=job_get_patterns,
         interval_val={"hours": 12},
+        cloudwatch_log_stream="job-get-patterns",
     ),
     get_vehicles=RequestDataType(
         db_table_name="request_get_vehicles",
         job=job_get_vehicles,
         interval_val={"seconds": 5},
+        cloudwatch_log_stream="job-get-vehicles",
     ),
 )
 
