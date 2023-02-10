@@ -20,7 +20,7 @@ ENABLE_CLOUDWATCH_LOGS = False
 db_name = "bus_data.db"
 cloudwatch_log_group = "scraper-monitoring"
 
-cloudwatch_client_config = Config(region_name="us-east-2")
+cloudwatch_client_config = Config(region_name="us-east-1")
 
 cloudwatch_logs = None
 if ENABLE_CLOUDWATCH_LOGS:
