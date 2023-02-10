@@ -133,3 +133,5 @@ dmypy.json
 *.db
 
 .vscode/settings.json
+
+*.pem
