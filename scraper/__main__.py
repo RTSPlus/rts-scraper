@@ -2,7 +2,6 @@ from time import time
 from datetime import datetime
 import sys, os
 import asyncio
-import sqlite3
 import json
 from types import CoroutineType
 from typing import NamedTuple
@@ -10,10 +9,11 @@ from typing import NamedTuple
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 import rts_api as rts
+import psycopg2
 import aiohttp
 
-import boto3
-from botocore.config import Config
+from boto3 import client as boto_client
+
 
 ENABLE_CLOUDWATCH_LOGS = False
 
@@ -23,7 +23,7 @@ cloudwatch_log_group = "scraper-monitoring"
 
 cloudwatch_logs = None
 if ENABLE_CLOUDWATCH_LOGS:
-    cloudwatch_logs = boto3.client("logs")
+    cloudwatch_logs = boto_client("logs")
 
 
 def log(tag: str, msg: str, timestamp: int = None, log_stream: str | None = None):
@@ -72,9 +72,7 @@ def chunk(lst, n):
         yield lst[i : i + n]
 
 
-async def job_get_routes(
-    session: aiohttp.ClientSession, con: sqlite3.Connection, req: RequestDataType
-):
+async def job_get_routes(session: aiohttp.ClientSession, con, req: RequestDataType):
     xtime = round(time() * 1000)
     results = await rts.async_api_call(
         session,
@@ -86,7 +84,7 @@ async def job_get_routes(
     try:
         cur = con.cursor()
         cur.execute(
-            f"insert into {req.db_table_name} values(?, ?)",
+            f"insert into {req.db_table_name} values(%s, %s)",
             (xtime, json.dumps(results)),
         )
         con.commit()
@@ -94,7 +92,8 @@ async def job_get_routes(
         log(
             req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
         )
-    except sqlite3.Error as e:
+        cur.close()
+    except Exception as e:
         log(
             req.job.__name__,
             f"Error occurred: {e.args[0]}",
@@ -102,9 +101,7 @@ async def job_get_routes(
         )
 
 
-async def job_get_vehicles(
-    session: aiohttp.ClientSession, con: sqlite3.Connection, req: RequestDataType
-):
+async def job_get_vehicles(session: aiohttp.ClientSession, con, req: RequestDataType):
     # First get current routes that are being serviced
     xtime = round(time() * 1000)
     res_routes = (
@@ -146,7 +143,7 @@ async def job_get_vehicles(
         try:
             cur = con.cursor()
             cur.execute(
-                f"insert into {req.db_table_name} values(?, ?)",
+                f"insert into {req.db_table_name} values(%s, %s)",
                 (xtime, json.dumps(results)),
             )
             con.commit()
@@ -156,7 +153,9 @@ async def job_get_vehicles(
                 "Request successful",
                 log_stream=req.cloudwatch_log_stream,
             )
-        except sqlite3.Error as e:
+
+            cur.close()
+        except Exception as e:
             log(
                 req.job.__name__,
                 f"Error occurred: {e.args[0]}",
@@ -168,9 +167,7 @@ async def job_get_vehicles(
         )
 
 
-async def job_get_patterns(
-    session: aiohttp.ClientSession, con: sqlite3.Connection, req: RequestDataType
-):
+async def job_get_patterns(session: aiohttp.ClientSession, con, req: RequestDataType):
     # First get current routes that are being serviced
     xtime = round(time() * 1000)
     res_routes = (
@@ -201,7 +198,7 @@ async def job_get_patterns(
     try:
         cur = con.cursor()
         cur.execute(
-            f"insert into {req.db_table_name} values(?, ?)",
+            f"insert into {req.db_table_name} values(%s, %s)",
             (xtime, json.dumps(patterns_responses)),
         )
         con.commit()
@@ -209,7 +206,8 @@ async def job_get_patterns(
         log(
             req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
         )
-    except sqlite3.Error as e:
+        cur.close()
+    except Exception as e:
         log(
             req.job.__name__,
             f"Error occured: {e.args[0]}",
@@ -240,15 +238,14 @@ request_data = RequestData(
 )
 
 
-async def main(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
-    # Load .env file
-    load_dotenv()
-
+async def main(scheduler: AsyncIOScheduler, con):
     # Setup database connection
     for request in request_data:
-        con.execute(
-            f"CREATE TABLE IF NOT EXISTS {request.db_table_name}(request_time integer primary key, data text)"
+        cur = con.cursor()
+        cur.execute(
+            f"CREATE TABLE IF NOT EXISTS {request.db_table_name}(request_time bigint primary key, data text)"
         )
+        cur.close()
 
     # Setup aiohttp session and add scheduled jobs
     async with aiohttp.ClientSession() as session:
@@ -263,27 +260,38 @@ async def main(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
             await asyncio.sleep(1)
 
 
-def shutdown(scheduler: AsyncIOScheduler, con: sqlite3.Connection):
+def shutdown(scheduler: AsyncIOScheduler, con):
     scheduler.shutdown()
-    con.close()
-
-    try:
-        sys.exit(0)
-    except SystemExit as e:
-        os._exit(e.code)
+    if con:
+        con.close()
 
 
 if __name__ == "__main__":
+    # Load .env file
+    load_dotenv()
+
     try:
         scheduler = AsyncIOScheduler()
-        con = sqlite3.connect(db_name)
+
+        con = psycopg2.connect(
+            database=os.getenv("postgres"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASS"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+        )
 
         scheduler.start()
 
         asyncio.get_event_loop().run_until_complete(main(scheduler, con))
     except KeyboardInterrupt:
         # Gracefully shut down on Cltr+C interrupt
-        shutdown(scheduler, con)
+        shutdown(scheduler, con if con else None)
+        try:
+            sys.exit(0)
+        except SystemExit as e:
+            os._exit(e.code)
     except Exception:
         # Cleanup and reraise. This will print a backtrace.
+        shutdown(scheduler, con if con else None)
         raise
