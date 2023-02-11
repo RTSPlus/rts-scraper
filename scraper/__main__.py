@@ -256,6 +256,7 @@ async def main(scheduler: AsyncIOScheduler, con):
                 request.job,
                 args=[session, con, request],
                 trigger="interval",
+                next_run_time=datetime.now(),
                 **request.interval_val,
             )
         while True:
