@@ -11,6 +11,7 @@ python-dotenv = "^0.21.1"
 apscheduler = "^3.9.1.post1"
 rts-api = {git = "https://github.com/RTSPlus/rts-api-python"}
 boto3 = "^1.26.59"
+psycopg2-binary = "^2.9.5"
 
 
 [tool.poetry.group.dev.dependencies]
