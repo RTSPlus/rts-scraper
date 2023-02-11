@@ -244,6 +244,7 @@ async def main(scheduler: AsyncIOScheduler, con):
         cur.execute(
             f"CREATE TABLE IF NOT EXISTS {request.db_table_name}(request_time bigint primary key, data text)"
         )
+        con.commit()
         cur.close()
 
     # Setup aiohttp session and add scheduled jobs
