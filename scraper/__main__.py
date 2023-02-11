@@ -15,7 +15,7 @@ import aiohttp
 from boto3 import client as boto_client
 
 
-ENABLE_CLOUDWATCH_LOGS = False
+ENABLE_CLOUDWATCH_LOGS = True
 
 cloudwatch_log_group = "scraper-monitoring"
 
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         scheduler = AsyncIOScheduler()
 
         con = psycopg2.connect(
-            database=os.getenv("postgres"),
+            database=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASS"),
             host=os.getenv("DB_HOST"),
