@@ -162,7 +162,9 @@ async def job_get_vehicles(session: aiohttp.ClientSession, con, req: RequestData
             )
     else:
         log(
-            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+            req.job.__name__,
+            "Request successful - No results",
+            log_stream=req.cloudwatch_log_stream,
         )
 
 
