@@ -17,7 +17,6 @@ from boto3 import client as boto_client
 
 ENABLE_CLOUDWATCH_LOGS = False
 
-db_name = "bus_data.db"
 cloudwatch_log_group = "scraper-monitoring"
 
 
