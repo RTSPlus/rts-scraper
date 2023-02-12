@@ -689,7 +689,7 @@ aiohttp = "^3.8.3"
 type = "git"
 url = "https://github.com/RTSPlus/rts-api-python"
 reference = "HEAD"
-resolved_reference = "61058784d5adbea21baf4948e8e91d00a89d20c2"
+resolved_reference = "39d97cda9eafe88d8cb017bade955d71b234d535"
 
 [[package]]
 name = "s3transfer"
