@@ -5,6 +5,7 @@ import asyncio
 import json
 from types import CoroutineType
 from typing import NamedTuple
+import pytz
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -64,6 +65,7 @@ class RequestData(NamedTuple):
     get_routes: RequestDataType
     get_patterns: RequestDataType
     get_vehicles: RequestDataType
+    get_detours: RequestDataType
 
 
 def chunk(lst, n):
@@ -216,6 +218,35 @@ async def job_get_patterns(session: aiohttp.ClientSession, con, req: RequestData
         )
 
 
+async def job_get_detours(session: aiohttp.ClientSession, con, req: RequestDataType):
+    xtime = round(time() * 1000)
+    results = await rts.async_api_call(
+        session,
+        call_type=rts.API_Call.GET_DETOURS,
+        hash_key=os.getenv("RTS_HASH_KEY"),
+        api_key=os.getenv("RTS_API_KEY"),
+    )
+
+    try:
+        cur = con.cursor()
+        cur.execute(
+            f"insert into {req.db_table_name} values(%s, %s)",
+            (xtime, json.dumps(results)),
+        )
+        con.commit()
+
+        log(
+            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+        )
+        cur.close()
+    except Exception as e:
+        log(
+            req.job.__name__,
+            f"Error occurred: {e.args[0]}",
+            log_stream=req.cloudwatch_log_stream,
+        )
+
+
 ### Request Data Definition ###
 request_data = RequestData(
     get_routes=RequestDataType(
@@ -235,6 +266,12 @@ request_data = RequestData(
         job=job_get_vehicles,
         interval_val={"seconds": 5},
         cloudwatch_log_stream="job-get-vehicles",
+    ),
+    get_detours=RequestDataType(
+        db_table_name="request_get_detours",
+        job=job_get_detours,
+        interval_val={"hours": 12},
+        cloudwatch_log_stream="job-get-detours",
     ),
 )
 
@@ -256,7 +293,7 @@ async def main(scheduler: AsyncIOScheduler, con):
                 request.job,
                 args=[session, con, request],
                 trigger="interval",
-                next_run_time=datetime.now(),
+                next_run_time=datetime.now(pytz.utc),
                 **request.interval_val,
             )
         while True:
