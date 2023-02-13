@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 import dataclasses
 from time import time
@@ -166,6 +167,7 @@ async def job_get_vehicles(session: ClientSession, con, req: RequestDataType):
                 (xtime, json.dumps(results)),
             )
 
+            column_value_map = defaultdict(list)
             # Insert parsed response
             for r in map(deserialize_vehicle_response, results):
                 columns, values = r.to_sql_tuple()
@@ -174,12 +176,17 @@ async def job_get_vehicles(session: ClientSession, con, req: RequestDataType):
                 columns = ("request_time", *columns)
                 values = (datetime.fromtimestamp(xtime / 1000), *values)
 
-                str_columns = ",".join(columns)
-                str_insert = ",".join(["%s"] * len(values))
+                column_value_map[columns].append(values)
 
+            for columns, values in column_value_map.items():
+                str_columns = ",".join(columns)
+                str_insert = ",".join(["%s"] * len(values[0]))
+
+                insertion_args = ",".join(
+                    [cur.mogrify(str_insert, values).decode("utf-8") for v in values]
+                )
                 cur.execute(
-                    f"INSERT INTO data_bus_location ({str_columns}) VALUES ({str_insert})",
-                    values,
+                    f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args}"
                 )
 
             con.commit()
