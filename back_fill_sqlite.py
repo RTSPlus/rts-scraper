@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from scraper.jobs.job_get_vehicles import deserialize_vehicle_response
 
-chunk_size = 10000
+chunk_size = 1000
 
 load_dotenv()
 
