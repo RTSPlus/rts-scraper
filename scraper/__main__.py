@@ -14,7 +14,7 @@ from scraper.job_get_patterns import job_get_patterns
 from scraper.job_get_routes import job_get_routes
 from scraper.job_get_vehicles import job_get_vehicles
 
-from scraper.types import RequestDataType
+from scraper.data_types import RequestDataType
 
 
 class RequestData(NamedTuple):
