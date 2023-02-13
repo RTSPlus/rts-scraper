@@ -5,7 +5,7 @@ from datetime import datetime
 from boto3 import client as boto_client
 
 
-ENABLE_CLOUDWATCH_LOGS = False
+ENABLE_CLOUDWATCH_LOGS = True
 
 cloudwatch_log_group = "scraper-monitoring"
 
