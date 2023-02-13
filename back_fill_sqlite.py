@@ -69,7 +69,7 @@ for i in range(100000):
         [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
     )
     cur_postgres.execute(
-        f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args}"
+        f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
     )
     con_postgres.commit()
     cur_postgres.close()
