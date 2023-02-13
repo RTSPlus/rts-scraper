@@ -71,6 +71,8 @@ for i in range(100000):
             values = (datetime.fromtimestamp(insert_time / 1000), *values)
             result_batch.append(values)
 
+    print(f"Inserting {len(result_batch)} rows...")
+
     insertion_args = ",".join(
         [cur_postgres_rts.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
     )

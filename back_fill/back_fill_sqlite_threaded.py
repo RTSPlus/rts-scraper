@@ -4,6 +4,9 @@ import json
 import psycopg2
 from datetime import datetime
 from dotenv import load_dotenv
+from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
+
 
 from scraper.jobs.job_get_vehicles import deserialize_vehicle_response
 
@@ -11,8 +14,11 @@ chunk_size = 1000
 
 load_dotenv()
 
-con_sqlite = sqlite3.connect("bus_data.db")
-cur_sqlite = con_sqlite.cursor()
+con_sqlite = sqlite3.connect(
+    "/Users/noah/Downloads/bus_data_2022.db", check_same_thread=False
+)
+
+print("Sqlite connection obtained")
 
 con_postgres = psycopg2.connect(
     database=os.getenv("DB_NAME"),
@@ -21,7 +27,6 @@ con_postgres = psycopg2.connect(
     host=os.getenv("DB_HOST"),
     port=os.getenv("DB_PORT"),
 )
-
 print("Postgres connection obtained")
 
 columns = (
@@ -44,18 +49,17 @@ str_columns = ",".join(columns)
 str_insert = ",".join(["%s"] * len(columns))
 str_insert = f"({str_insert})"
 
-for i in range(100000):
-    print(f"Processing chunk {i} ({i * chunk_size})")
-    res = cur_sqlite.execute(
-        f"SELECT * FROM request_get_vehicles limit {i * chunk_size},{chunk_size}"
-    )
-    rows = res.fetchall()
 
-    print(f"Processing {len(rows)} rows...")
+def process_chunk(limit, offset, i):
+    print(f"[Chunk {i}] Offset {offset} Limit {limit}")
+
+    cur_sqlite = con_sqlite.cursor()
+    query = cur_sqlite.execute(f"select * from queries limit {limit} offset {offset}")
+    rows = query.fetchall()
+
+    print(f"[Chunk {i}] Processing {len(rows)} rows...")
 
     start = datetime.now()
-
-    cur_postgres = con_postgres.cursor()
     result_batch = []
 
     for insert_time, response in rows:
@@ -67,8 +71,7 @@ for i in range(100000):
             values = (datetime.fromtimestamp(insert_time / 1000), *values)
             result_batch.append(values)
 
-    print(f"Inserting {len(result_batch)} rows...")
-
+    cur_postgres = con_postgres.cursor()
     insertion_args = ",".join(
         [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
     )
@@ -79,10 +82,30 @@ for i in range(100000):
     cur_postgres.close()
 
     end = datetime.now()
-    print(f"Processed {len(rows)} rows in {end - start}")
+    print(f"[Chunk {i}] Processed {len(rows)} rows in {end - start}")
 
-    if len(rows) == 0 or len(rows) < chunk_size:
-        break
+    return end - start
+
+
+queries_len = 10000
+# queries_len = 537754
+with ThreadPoolExecutor() as executor:
+    futures = []
+    results = []
+
+    limit = queries_len // (cpu_count())
+    for i in range(cpu_count()):
+        offset = limit * i
+        if i == cpu_count() - 1:
+            limit = -1
+
+        print(f"Processing chunk {i} ({offset})")
+        futures.append(executor.submit(process_chunk, limit, offset, i))
+
+    for future in futures:
+        results.append(future.result())
+
+    print(results)
 
 print("done")
 
