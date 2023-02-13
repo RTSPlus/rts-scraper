@@ -57,13 +57,13 @@ for i in range(100000):
     result_batch = []
 
     for insert_time, response in rows:
-        for r in json.loads(response):
-            for vehicle_obj in map(deserialize_vehicle_response, r):
-                columns, values = vehicle_obj.to_sql_tuple()
+        r = json.loads(response)
+        for vehicle_obj in map(deserialize_vehicle_response, r):
+            columns, values = vehicle_obj.to_sql_tuple()
 
-                # Insert request time as first column
-                values = (datetime.fromtimestamp(insert_time / 1000), *values)
-                result_batch.append(values)
+            # Insert request time as first column
+            values = (datetime.fromtimestamp(insert_time / 1000), *values)
+            result_batch.append(values)
 
     insertion_args = ",".join(
         [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
