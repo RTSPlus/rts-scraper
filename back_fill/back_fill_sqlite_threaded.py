@@ -26,6 +26,7 @@ con_postgres = psycopg2.connect(
     password=os.getenv("DB_PASS"),
     host=os.getenv("DB_HOST"),
     port=os.getenv("DB_PORT"),
+    application_name="Backfill SQLite Threaded",
 )
 print("Postgres connection obtained")
 
