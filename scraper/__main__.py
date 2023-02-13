@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 import psycopg2
 import aiohttp
 
-from scraper.job_get_detours import job_get_detours
-from scraper.job_get_patterns import job_get_patterns
-from scraper.job_get_routes import job_get_routes
-from scraper.job_get_vehicles import job_get_vehicles
+from scraper.jobs.job_get_detours import job_get_detours
+from scraper.jobs.job_get_patterns import job_get_patterns
+from scraper.jobs.job_get_routes import job_get_routes
+from scraper.jobs.job_get_vehicles import job_get_vehicles
 
 from scraper.data_types import RequestDataType
 
