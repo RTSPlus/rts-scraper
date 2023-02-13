@@ -11,7 +11,7 @@ from aiohttp import ClientSession
 
 import rts_api as rts
 from scraper.log import log
-from scraper.types import RequestDataType
+from scraper.data_types import RequestDataType
 from scraper.util import chunk
 
 

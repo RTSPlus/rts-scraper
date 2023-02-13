@@ -1,13 +1,12 @@
 from time import time
 import os
 import json
-import asyncio
 
 from aiohttp import ClientSession
 
 import rts_api as rts
 from scraper.log import log
-from scraper.types import RequestDataType
+from scraper.data_types import RequestDataType
 
 
 async def job_get_detours(session: ClientSession, con, req: RequestDataType):
