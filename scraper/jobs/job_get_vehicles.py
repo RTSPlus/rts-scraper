@@ -181,9 +181,10 @@ async def job_get_vehicles(session: ClientSession, con, req: RequestDataType):
             for columns, values in column_value_map.items():
                 str_columns = ",".join(columns)
                 str_insert = ",".join(["%s"] * len(values[0]))
+                str_insert = f"({str_insert})"
 
                 insertion_args = ",".join(
-                    [cur.mogrify(str_insert, values).decode("utf-8") for v in values]
+                    [cur.mogrify(str_insert, v).decode("utf-8") for v in values]
                 )
                 cur.execute(
                     f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args}"
