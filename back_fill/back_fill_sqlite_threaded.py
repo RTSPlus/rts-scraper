@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
-
 from scraper.jobs.job_get_vehicles import deserialize_vehicle_response
 
 chunk_size = 1000
@@ -51,45 +50,53 @@ str_insert = ",".join(["%s"] * len(columns))
 str_insert = f"({str_insert})"
 
 
-def process_chunk(limit, offset, i):
-    print(f"[Chunk {i}] Offset {offset} Limit {limit}")
-
-    cur_sqlite = con_sqlite.cursor()
-    query = cur_sqlite.execute(f"select * from queries limit {limit} offset {offset}")
-    rows = query.fetchall()
-
-    print(f"[Chunk {i}] Processing {len(rows)} rows...")
-
-    start = datetime.now()
-    result_batch = []
-
-    for insert_time, response in rows:
-        r = json.loads(response)
-        for vehicle_obj in map(deserialize_vehicle_response, r):
-            columns, values = vehicle_obj.to_sql_tuple()
-
-            # Insert request time as first column
-            values = (datetime.fromtimestamp(insert_time / 1000), *values)
-            result_batch.append(values)
-
-    cur_postgres = con_postgres.cursor()
-    insertion_args = ",".join(
-        [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
-    )
-    cur_postgres.execute(
-        f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
-    )
-    con_postgres.commit()
-    cur_postgres.close()
-
-    end = datetime.now()
-    print(f"[Chunk {i}] Processed {len(rows)} rows in {end - start}")
-
-    return end - start
+sub_chunk_size = 80
 
 
-queries_len = 10000
-# queries_len = 537754
+def process_chunk(limit_range, start_offset, chunk_i):
+    print(f"[Chunk {chunk_i}] Offset {start_offset} Limit {limit_range}")
+
+    for i in range(start_offset, start_offset + limit_range, sub_chunk_size):
+        cur_sqlite = con_sqlite.cursor()
+        query = cur_sqlite.execute(
+            f"select * from queries limit {sub_chunk_size} offset {i}"
+        )
+        rows = query.fetchall()
+
+        print(f"[Chunk {chunk_i}] Processing {len(rows)} rows...")
+
+        start = datetime.now()
+        result_batch = []
+
+        for insert_time, response in rows:
+            r = json.loads(response)
+            for vehicle_obj in map(deserialize_vehicle_response, r):
+                columns, values = vehicle_obj.to_sql_tuple()
+
+                # Insert request time as first column
+                values = (datetime.fromtimestamp(insert_time / 1000), *values)
+                result_batch.append(values)
+
+        cur_postgres = con_postgres.cursor()
+        insertion_args = ",".join(
+            [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
+        )
+        print(
+            f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
+        )
+        cur_postgres.execute(
+            f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
+        )
+        con_postgres.commit()
+        cur_postgres.close()
+
+        end = datetime.now()
+        print(f"[Chunk {chunk_i}] Processed {len(rows)} rows in {end - start}")
+
+    return 0
+
+
+queries_len = 537754
 with ThreadPoolExecutor() as executor:
     futures = []
     results = []
@@ -97,8 +104,8 @@ with ThreadPoolExecutor() as executor:
     limit = queries_len // (cpu_count())
     for i in range(cpu_count()):
         offset = limit * i
-        if i == cpu_count() - 1:
-            limit = -1
+        # if i == cpu_count() - 1:
+        #     limit = -1
 
         print(f"Processing chunk {i} ({offset})")
         futures.append(executor.submit(process_chunk, limit, offset, i))

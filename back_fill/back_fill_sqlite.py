@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 
 from scraper.jobs.job_get_vehicles import deserialize_vehicle_response
 
-chunk_size = 1000
+chunk_size = 80
 
 load_dotenv()
 
-con_sqlite = sqlite3.connect("bus_data.db")
+con_sqlite = sqlite3.connect("/Users/noah/Downloads/bus_data_2022.db")
 cur_sqlite = con_sqlite.cursor()
 
 con_postgres = psycopg2.connect(
@@ -45,10 +45,10 @@ str_columns = ",".join(columns)
 str_insert = ",".join(["%s"] * len(columns))
 str_insert = f"({str_insert})"
 
-for i in range(100000):
+for i in range(1000000):
     print(f"Processing chunk {i} ({i * chunk_size})")
     res = cur_sqlite.execute(
-        f"SELECT * FROM request_get_vehicles limit {i * chunk_size},{chunk_size}"
+        f"SELECT * FROM queries limit {i * chunk_size},{chunk_size}"
     )
     rows = res.fetchall()
 
@@ -68,15 +68,15 @@ for i in range(100000):
             values = (datetime.fromtimestamp(insert_time / 1000), *values)
             result_batch.append(values)
 
-    print(f"Inserting {len(result_batch)} rows...")
-
-    insertion_args = ",".join(
-        [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
-    )
-    cur_postgres.execute(
-        f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
-    )
-    con_postgres.commit()
+    if len(result_batch):
+        print(f"Inserting {len(result_batch)} rows...")
+        insertion_args = ",".join(
+            [cur_postgres.mogrify(str_insert, v).decode("utf-8") for v in result_batch]
+        )
+        cur_postgres.execute(
+            f"INSERT INTO data_bus_location ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
+        )
+        con_postgres.commit()
     cur_postgres.close()
 
     end = datetime.now()
