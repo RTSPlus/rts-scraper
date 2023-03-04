@@ -45,7 +45,7 @@ str_columns = ",".join(columns)
 str_insert = ",".join(["%s"] * len(columns))
 str_insert = f"({str_insert})"
 
-for i in range(1000000):
+for i in range(4325, 1000000):
     print(f"Processing chunk {i} ({i * chunk_size})")
     res = cur_sqlite.execute(
         f"SELECT * FROM queries limit {i * chunk_size},{chunk_size}"
