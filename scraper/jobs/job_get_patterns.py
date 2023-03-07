@@ -1,4 +1,5 @@
 from dataclasses import dataclass, asdict
+from datetime import datetime
 from time import time
 import os
 import json
@@ -144,6 +145,20 @@ def deserialize_pattern_response(response: Any) -> PatternResponse:
     )
 
 
+columns = (
+    "request_time",
+    "pattern_id",
+    "direction",
+    "reported_length",
+    "waypoints",
+    "stops",
+    "detour",
+    "waypoints_geom",
+    "stops_geom",
+)
+str_columns = ",".join(columns)
+
+
 async def job_get_patterns(session: ClientSession, con, req: RequestDataType):
     # First get current routes that are being serviced
     xtime = round(time() * 1000)
@@ -172,21 +187,73 @@ async def job_get_patterns(session: ClientSession, con, req: RequestDataType):
         )
     )
 
+    # Raw response
     try:
         cur = con.cursor()
+
         cur.execute(
             f"insert into {req.db_table_name} values(%s, %s)",
             (xtime, json.dumps(patterns_responses)),
         )
+
         con.commit()
 
         log(
-            req.job.__name__, "Request successful", log_stream=req.cloudwatch_log_stream
+            req.job.__name__,
+            "Request successful - Raw Response",
+            log_stream=req.cloudwatch_log_stream,
         )
         cur.close()
     except Exception as e:
         log(
             req.job.__name__,
-            f"Error occured: {e.args[0]}",
+            f"Error occured - Raw Response: {e.args[0]}",
+            log_stream=req.cloudwatch_log_stream,
+        )
+
+    # Parsed response
+    try:
+        cur = con.cursor()
+
+        result_batch: List[Any] = []
+        for response in patterns_responses:
+
+            for pattern in map(
+                deserialize_pattern_response, response["bustime-response"]["ptr"]
+            ):
+                # columns, values = pattern.to_sql_tuple()
+                _, values = pattern.to_sql_dict()
+
+                # Insert request time as first column
+                # values = (datetime.fromtimestamp(insert_time / 1000), *values)
+                values["request_time"] = datetime.fromtimestamp(xtime / 1000)
+                result_batch.append(values)
+
+        if len(result_batch) > 0:
+            insertion_args = ",".join(
+                [
+                    cur.mogrify(
+                        "(%(request_time)s, %(pattern_id)s, %(direction)s, %(reported_length)s, %(waypoints)s::jsonb[], %(stops)s::jsonb[], %(detour)s::jsonb, %(waypoints_geom)s, %(stops_geom)s)",
+                        v,
+                    ).decode("utf-8")
+                    for v in result_batch
+                ]
+            )
+            cur.execute(
+                f"INSERT INTO data_patterns ({str_columns}) VALUES {insertion_args} ON CONFLICT DO NOTHING"
+            )
+
+        con.commit()
+
+        log(
+            req.job.__name__,
+            "Request successful - Parsed Response",
+            log_stream=req.cloudwatch_log_stream,
+        )
+        cur.close()
+    except Exception as e:
+        log(
+            req.job.__name__,
+            f"Error occured - Parsed Response: {e.args[0]}",
             log_stream=req.cloudwatch_log_stream,
         )

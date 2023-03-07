@@ -66,11 +66,6 @@ for i in range(10000000):
                 values["request_time"] = datetime.fromtimestamp(insert_time / 1000)
                 result_batch.append(values)
 
-                # cur.execute(
-                #     f"INSERT INTO data_patterns({str_columns}) VALUES({insert_cols}) ON CONFLICT DO NOTHING",
-                #     values,
-                # )
-
     print(f"Inserting {len(result_batch)} rows...")
 
     if len(result_batch) > 0:
