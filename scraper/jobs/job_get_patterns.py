@@ -5,6 +5,7 @@ import json
 import asyncio
 from typing import Any, List, Literal, Optional
 from psycopg2.extras import Json
+from psycopg2.extensions import AsIs
 
 from aiohttp import ClientSession
 
@@ -50,23 +51,9 @@ class PatternResponse:
 
     detour: Optional[Detour]
 
-    def to_sql_tuple(self):
-        column_name_value_map = [
-            ("pattern_id", self.pattern_id),
-            ("direction", self.direction),
-            ("reported_length", self.reported_length),
-            ("waypoints", Json([asdict(w) for w in self.waypoints])),
-            # ("waypoints", Json(list(map(asdict, self.waypoints)))),
-            ("stops", Json([asdict(s) for s in self.stops])),
-            # ("stops", Json(list(map(asdict, self.stops)))),
-            ("detour", Json(asdict(self.detour) if self.detour else None)),
-        ]
-
-        return tuple(zip(*column_name_value_map))
-
-    def to_sql_dict(self):
+    def to_sql_dict(self) -> Any:
         return (
-            "%(request_time)s, %(pattern_id)s, %(direction)s, %(reported_length)s, %(waypoints)s::jsonb[], %(stops)s::jsonb[], %(detour)s::jsonb",
+            "%(request_time)s, %(pattern_id)s, %(direction)s, %(reported_length)s, %(waypoints)s::jsonb[], %(stops)s::jsonb[], %(detour)s::jsonb, %(waypoints_geom)s, %(stops_geom)s",
             {
                 "pattern_id": self.pattern_id,
                 "direction": self.direction,
@@ -74,6 +61,12 @@ class PatternResponse:
                 "waypoints": [Json(asdict(w)) for w in self.waypoints],
                 "stops": [Json(asdict(s)) for s in self.stops],
                 "detour": Json(asdict(self.detour) if self.detour else None),
+                "waypoints_geom": AsIs(
+                    f"ST_SetSRID(ST_MakeLine(ARRAY[{','.join([f'ST_MakePoint({w.lon}, {w.lat})' for w in self.waypoints])}]), 4326)"
+                ),
+                "stops_geom": AsIs(
+                    f"ST_SetSRID(ST_Collect(ARRAY[{','.join([f'ST_MakePoint({s.lon}, {s.lat})' for s in self.stops])}]), 4326)"
+                ),
             },
         )
 

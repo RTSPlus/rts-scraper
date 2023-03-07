@@ -27,6 +27,8 @@ columns = (
     "waypoints",
     "stops",
     "detour",
+    "waypoints_geom",
+    "stops_geom",
 )
 str_columns = ",".join(columns)
 str_insert = ",".join(["%s"] * len(columns))
@@ -38,7 +40,7 @@ chunk_size = 1
 cur = con.cursor()
 
 # for i in range(1):
-for i in range(1000000):
+for i in range(10000000):
     print(f"Processing chunk {i} ({i * chunk_size})")
     cur.execute(f"SELECT * FROM request_get_patterns OFFSET {i * chunk_size} LIMIT 1")
     rows = cur.fetchall()
@@ -75,7 +77,7 @@ for i in range(1000000):
         insertion_args = ",".join(
             [
                 cur.mogrify(
-                    "(%(request_time)s, %(pattern_id)s, %(direction)s, %(reported_length)s, %(waypoints)s::jsonb[], %(stops)s::jsonb[], %(detour)s::jsonb)",
+                    "(%(request_time)s, %(pattern_id)s, %(direction)s, %(reported_length)s, %(waypoints)s::jsonb[], %(stops)s::jsonb[], %(detour)s::jsonb, %(waypoints_geom)s, %(stops_geom)s)",
                     v,
                 ).decode("utf-8")
                 for v in result_batch
@@ -92,7 +94,11 @@ for i in range(1000000):
     if len(rows) == 0:
         break
 
-print("done")
-
-
 con.close()
+
+print("closing session")
+
+while not con.closed:
+    pass
+
+print("done")
